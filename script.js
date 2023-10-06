@@ -129,6 +129,7 @@ map.addControl(new customButton());
        ]
 
        let summaryresult=[];
+       let removeall=[];
 
   
 
@@ -173,7 +174,7 @@ map.addControl(new customButton());
     });
 
     
-
+    let marker=null;
 
     // Create a temporary polygon layer
     let tempPolygon = L.polygon([], { dashArray: '5, 5', color: 'black' });
@@ -183,9 +184,11 @@ map.addControl(new customButton());
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
         console.log(lat, lng);
-
+       
         if (polygonPoints.length === 0) {
             // Add the first point only once
+             marker = L.marker([lat, lng]).addTo(map);
+        
             polygonPoints.push([lat, lng]);
         }
 
@@ -198,8 +201,8 @@ map.addControl(new customButton());
         tempPolygon.addTo(map);
 
         // Add a marker at the clicked location (optional)
-        const marker = L.marker([lat, lng]).addTo(map);
-        markers.push(marker);
+        // const marker = L.marker([lat, lng]).addTo(map);
+        // markers.push(marker);
     });
 
     const priceSlabsTable = document.getElementById("priceSlabsTable");
@@ -226,7 +229,8 @@ map.addControl(new customButton());
     // Event handler for the "Create Polygon" button click
     document.getElementById('createPolygonButton').addEventListener('click', function (event) {
         event.preventDefault();
-        if (polygonPoints.length >= 3) { // Check for at least three points to create a polygon
+        console.log(polygonPoints.length);
+        if (polygonPoints.length >= 4) { // Check for at least three points to create a polygon
             // Convert your points to Leaflet LatLng objects
             const latLngPoints = polygonPoints.map(point => L.latLng(point[0], point[1]));
 
@@ -238,18 +242,16 @@ map.addControl(new customButton());
             removePolygon = polygon;
 
             // Add the polygon to the map
-            polygon.addTo(map);//req
+           
+            
                
 
             // Clear the polygonPoints array and remove the temporary polygon layer
             removePolygon_points = polygonPoints;
             polygonPoints = [];//req
-            map.removeLayer(tempPolygon);
-            document.getElementById('polygon-form-container').style.display = 'block';
+            map.removeLayer(tempPolygon);//req
+            
 
-         
-           // Handle the form submission
-            // Get the values from the form
             const polygonName = document.getElementById('polygonName').value;
             const polygonId = document.getElementById('polygonId').value;
 
@@ -266,11 +268,7 @@ map.addControl(new customButton());
                     priceSlabs.push({ distance, price });
                 }
             }
-            // const priceSlabsStr = document.getElementById('priceSlabs').value;
-           
-            // Convert the comma-separated price slabs to an array
-            // const priceSlabs = priceSlabsStr.split(',').map(str => parseFloat(str.trim()));
-            // Check if all required fields are filled
+            
             if (polygonName && polygonId && priceSlabs.length > 0) {
                 // Add the details to the polygon object
                 polygon.properties = {
@@ -279,59 +277,28 @@ map.addControl(new customButton());
                     priceSlabs: priceSlabs
                 };
 
-                // // Hide the polygon details form
-                // document.getElementById('polygon-form-container').style.display = 'none';
-
-                // Clear the form fields
-                // document.getElementById('polygonName').value = '';
-                // document.getElementById('polygonId').value = '';
-                // document.getElementById('priceSlabs').value = '';
-
-              
-                // console.log(polygon);
-
-
-
 
                 polygons.push(polygon);
                 console.log(polygons);
                 console.log("polygons");
-
-                
+                map.removeLayer(marker);
+                polygon.addTo(map);//req
                $("#map-dropdown").hide();
              
             } else {
+                map.removeLayer(marker);
+                map.removeLayer(tempPolygon);//req
                 alert('Please fill in all required fields.');
             }
     
      
             
         } else {
+            map.removeLayer(marker);
+            map.removeLayer(tempPolygon);//req
             alert('Please select at least three points to create a polygon.');
         }
     });
-
-
-
-
-
-    // document.getElementById('removePolygonButton').addEventListener('click', function () {
-    //     if (reqpolygon) {
-    //         map.removeLayer(reqpolygon); // Remove the polygon from the map
-    //         console.log("Polygon removed");
-    //         console.log(removePolygon_points);
-    //         console.log("polygo removed points")
-
-    //         markers.forEach(marker => {
-    //             map.removeLayer(marker);
-    //         });
-    //         markers = [];
-    //         reqpolygon = null;  // Set the polygon variable to null
-    //         removePolygon_points = [];
-    //     }
-    // });
-
-
 
 
 
@@ -340,6 +307,15 @@ map.addControl(new customButton());
     const form = document.getElementById("routing-form");
     form.addEventListener("submit", async function (e) {
         e.preventDefault();
+        polygonPrice=[];
+        polygonSum=[];
+        summaryresult=[]
+        console.log(polygons);
+        console.log("hey listen to me");
+        removeall.forEach(req => {map.removeLayer(req)});
+        console.log(removeall);
+        console.log("remove all/..")
+        removeall=[];
 
         const startAddress = document.getElementById("start").value;
         const destinationAddress = document.getElementById("destination").value;
@@ -354,150 +330,144 @@ map.addControl(new customButton());
         ]);
 
 
-        control.on("routesfound", function (e) {
-            const route = e.routes[0];
-            console.log(route);
 
-            //to find the length of routestringline
-            const turfcordroute = route.coordinates.map(coord => [coord.lng, coord.lat]);
-            console.log(turfcordroute);
-            var line = turf.lineString(turfcordroute);
-            var length = turf.length(line, { units: 'miles' });
-            console.log("length is", length);
-
-
-            if (reqpolygon == null) {
-                alert("FIRST MARK POLYGON");
-            }
-
-            else if (route) {
-  
-                  // Function to generate the HTML for polygon details
-                  function generatePolygonDetails(polygon) {
-                    let detailsHTML = '<div class="row polygon-container">';
-                    detailsHTML += '<div class="col-md-4">';
-                    detailsHTML += `<h4>Polygon ID: ${polygon.id}</h4>`;
-                    detailsHTML += `<p>Name: ${polygon.name}</p>`;
-                    detailsHTML += '</div>';
-                    detailsHTML += '<div class="col-md-8">';
-                    detailsHTML += '<h5>Price Slabs</h5>';
-                    detailsHTML += generatePriceSlabsTable(polygon.priceSlabs);
-                    detailsHTML += '</div>';
-                    detailsHTML += '</div>';
-                    return detailsHTML;
-                }
         
-                // Function to generate the HTML table for price slabs
-                function generatePriceSlabsTable(priceSlabs) {
-                    let tableHTML = '<table class="table">';
-                    tableHTML += '<thead><tr><th>Distance</th><th>Price</th></tr></thead>';
-                    tableHTML += '<tbody>';
-                    
-                    priceSlabs.forEach((slab) => {
-                        tableHTML += `<tr><td>${slab.distance}</td><td>${slab.price}</td></tr>`;
-                    });
-        
-                    tableHTML += '</tbody></table>';
-                    return tableHTML;
-                }
-
-        // Loop through the polygons and display their details
-      // Loop through the polygons and display their details
-      polygons.forEach((polygon, index) => {
-        const polygonContainer = document.createElement('div');
-        polygonContainer.classList.add('polygon-details');
-        polygonContainer.innerHTML = generatePolygonDetails(polygon.properties);
-        document.getElementById("polygon-details").appendChild(polygonContainer);
-        if (index !== polygons.length - 1) {
-            // Add a separator between polygons
-            const separator = document.createElement('hr');
-            separator.classList.add('separator');
-            document.getElementById("polygon-details").appendChild(separator);
-        }
     });
 
+    
+    control.on("routesfound", function (e) {
+        const route = e.routes[0];
+        console.log(route);
+        console.log("route");
+
+        //to find the length of routestringline
+        const turfcordroute = route.coordinates.map(coord => [coord.lng, coord.lat]);
+        console.log(turfcordroute);
+        var line = turf.lineString(turfcordroute);
+        var length = turf.length(line, { units: 'miles' });
+        console.log("length is", length);
 
 
+        if (polygons.length == 0) {
+            alert("FIRST MARK POLYGON");
+        }
 
+        else if (route) {
 
-
-
-
-                for (var i = 0; i < polygons.length; i++) {
-                    const intersects = checkRouteIntersection(route, polygons[i]);
-                }
-                console.log("polygon sum array");
-                console.log(polygonPrice);
-                console.log(polygonSum);
-                let sumintersects = 0;
-                let totalpriceindidepolygon=0;
-                for (var i = 0; i < polygonSum.length; i++) {
-                    totalpriceindidepolygon = totalpriceindidepolygon + polygonSum[i];
-                }
-                for (var i = 0; i < polygonPrice.length; i++) {
-                    sumintersects = sumintersects + polygonPrice[i];
-                }
-                let freespace = ((route.summary.totalDistance / 1609) - sumintersects);
-                console.log("freespace...", freespace);
-
-
-
-                function calculateTotalPrice(distancePriceObjects, distance) {
-                    let totalPrice = 0;
+              // Function to generate the HTML for polygon details
+              function generatePolygonDetails(polygon) {
+                let detailsHTML = '<div class="row polygon-container">';
+                detailsHTML += '<div class="col-md-4">';
+                detailsHTML += `<h4>Polygon ID: ${polygon.id}</h4>`;
+                detailsHTML += `<p>Name: ${polygon.name}</p>`;
+                detailsHTML += '</div>';
+                detailsHTML += '<div class="col-md-8">';
+                detailsHTML += '<h5>Price Slabs</h5>';
+                detailsHTML += generatePriceSlabsTable(polygon.priceSlabs);
+                detailsHTML += '</div>';
+                detailsHTML += '</div>';
+                return detailsHTML;
+            }
+    
+            // Function to generate the HTML table for price slabs
+            function generatePriceSlabsTable(priceSlabs) {
+                let tableHTML = '<table class="table">';
+                tableHTML += '<thead><tr><th>Distance</th><th>Price</th></tr></thead>';
+                tableHTML += '<tbody>';
                 
-                    for (const slab of distancePriceObjects) {
-                        const slabDistance =slab.distance;
-                        const slabPrice = slab.price;
-                
-                        if (distance <= slabDistance) {
-                            totalPrice += distance * slabPrice;
-                            break;
-                        } else {
-                            totalPrice += slabDistance * slabPrice;
-                            console.log("free price");
-                            console.log(slabDistance , slabPrice)
-                            distance -= slabDistance;
-                        }
+                priceSlabs.forEach((slab) => {
+                    tableHTML += `<tr><td>${slab.distance}</td><td>${slab.price}</td></tr>`;
+                });
+    
+                tableHTML += '</tbody></table>';
+                return tableHTML;
+            }
+
+    // Loop through the polygons and display their details
+  
+// Clear previously added data
+const polygonDetailsContainer = document.getElementById("polygon-details");
+while (polygonDetailsContainer.firstChild) {
+    polygonDetailsContainer.removeChild(polygonDetailsContainer.firstChild);
+}
+
+
+  polygons.forEach((polygon, index) => {
+    const polygonContainer = document.createElement('div');
+    polygonContainer.classList.add('polygon-details');
+    polygonContainer.innerHTML = generatePolygonDetails(polygon.properties);
+    document.getElementById("polygon-details").appendChild(polygonContainer);
+    if (index !== polygons.length - 1) {
+        // Add a separator between polygons
+        const separator = document.createElement('hr');
+        separator.classList.add('separator');
+        document.getElementById("polygon-details").appendChild(separator);
+    }
+});
+
+
+
+
+
+
+
+
+            for (var i = 0; i < polygons.length; i++) {
+                const intersects = checkRouteIntersection(route, polygons[i]);
+            }
+            console.log("polygon sum array");
+            console.log(polygonPrice);
+            console.log(polygonSum);
+            let sumintersects = 0;
+            let totalpriceindidepolygon=0;
+            for (var i = 0; i < polygonSum.length; i++) {
+                totalpriceindidepolygon = totalpriceindidepolygon + polygonSum[i];
+            }
+            for (var i = 0; i < polygonPrice.length; i++) {
+                sumintersects = sumintersects + polygonPrice[i];
+            }
+            let freespace = ((route.summary.totalDistance / 1609) - sumintersects);
+            console.log("freespace...", freespace);
+
+
+
+            function calculateTotalPrice(distancePriceObjects, distance) {
+                let totalPrice = 0;
+            
+                for (const slab of distancePriceObjects) {
+                    const slabDistance =slab.distance;
+                    const slabPrice = slab.price;
+            
+                    if (distance <= slabDistance) {
+                        totalPrice += distance * slabPrice;
+                        break;
+                    } else {
+                        totalPrice += slabDistance * slabPrice;
+                        console.log("free price");
+                        console.log(slabDistance , slabPrice)
+                        distance -= slabDistance;
                     }
-                
-                    return totalPrice;
                 }
-               
-                
-                const totalPrice = calculateTotalPrice(freespacefair, freespace);
-                console.log(`price for freespace  is ${totalPrice}`);
-                const totalride=totalPrice+totalpriceindidepolygon;
-                console.log(`total ride price is ${totalride}`);
-                summaryresult.push(`price for freespace ${freespace} miles is ${totalPrice} £`)
+            
+                return totalPrice;
+            }
+           
+            
+            const totalPrice = calculateTotalPrice(freespacefair, freespace);
+            console.log(`price for freespace  is ${totalPrice}`);
+            const totalride=totalPrice+totalpriceindidepolygon;
+            console.log(`total ride price is ${totalride}`);
+            summaryresult.push(`price for freespace ${freespace} miles is ${totalPrice} £`)
 
-                
-                summaryresult.push(`total ride price is ${totalride} £`);
-                console.log(summaryresult);
-                const resultContainer = document.getElementById("result-container");
+            
+            summaryresult.push(`total ride price is ${totalride} £`);
+            console.log(summaryresult);
 
-//                 const ul = document.createElement("ul");
 
-//                 // Iterate through the `summaryresult` array and create list items
-//                 summaryresult.forEach((result) => {
-//                   const li = document.createElement("li");
-                
-//                   // Create a <strong> element to make the text bold
-//                   const strong = document.createElement("strong");
-//                   strong.textContent = result;
-                
-//                   // Append the <strong> element to the list item
-//                   li.appendChild(strong);
-                
-//                   // Append the list item to the unordered list
-//                   ul.appendChild(li);
-//                 });
-
-// // Clear the previous content of the result container (if any)
-// resultContainer.innerHTML = "";
-
-// // Append the unordered list to the result container
-// resultContainer.appendChild(ul);
-
+            const resultContainer = document.getElementById("result-container");
+while (resultContainer.firstChild) {
+    resultContainer.removeChild(resultContainer.firstChild);
+}
 // Create a Bootstrap card element
 const card = document.createElement("div");
 card.classList.add("card");
@@ -518,23 +488,23 @@ ul.classList.add("list-group", "list-group-flush");
 
 // Iterate through the `summaryresult` array and create list items
 summaryresult.forEach((result,index) => {
-  // Create a list item with Bootstrap classes
-  const li = document.createElement("li");
-  li.classList.add("list-group-item");
+// Create a list item with Bootstrap classes
+const li = document.createElement("li");
+li.classList.add("list-group-item");
 
-  // Create a <strong> element to make the text bold
-  const strong = document.createElement("strong");
-  strong.textContent = result;
+// Create a <strong> element to make the text bold
+const strong = document.createElement("strong");
+strong.textContent = result;
 
-  if (index === summaryresult.length - 1) {
-    strong.style.color = "red";
-  }
+if (index === summaryresult.length - 1) {
+strong.style.color = "red";
+}
 
-  // Append the <strong> element to the list item
-  li.appendChild(strong);
+// Append the <strong> element to the list item
+li.appendChild(strong);
 
-  // Append the list item to the unordered list
-  ul.appendChild(li);
+// Append the list item to the unordered list
+ul.appendChild(li);
 });
 
 // Append the title and unordered list to the card body
@@ -546,17 +516,10 @@ card.appendChild(cardBody);
 
 // Append the card to the result container
 resultContainer.appendChild(card);
-                
+            
 
 
-            }
-        });
-
-        // Display the coordinates
-        document.getElementById("coordinates").innerHTML = `
-            Start Coordinates: ${startCoordinates.lat}, ${startCoordinates.lng}<br>
-            Destination Coordinates: ${destinationCoordinates.lat}, ${destinationCoordinates.lng}
-        `;
+        }
     });
 
     // Function to geocode an address to coordinates using OpenStreetMap Nominatim API
@@ -632,11 +595,12 @@ resultContainer.appendChild(card);
             popupAnchor: [1, -34] // Adjust the popup anchor if necessary
         });
 
-        L.geoJSON(intersectionPoints, {
+       let mark= L.geoJSON(intersectionPoints, {
             pointToLayer: function (feature, latlng) {
                 return L.marker(latlng, { icon: redIcon });
             }
         }).addTo(map);
+        removeall.push(mark);
 
         console.log(intersectionPointsArray);
         console.log("intersectiopointarray");
@@ -667,9 +631,10 @@ resultContainer.appendChild(card);
 
 
             console.log("intersection");
-            L.geoJSON(intersection, {
+          let markline=  L.geoJSON(intersection, {
                 style: lineStyle
             }).addTo(map);
+            removeall.push(markline);
         }
 
         console.log("sum is....", sum);
